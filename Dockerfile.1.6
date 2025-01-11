@@ -1,0 +1,57 @@
+# First stage: Build the builder program
+FROM golang:bullseye as builder
+COPY builder/ /builder
+WORKDIR /builder
+RUN go build -o /builder/cloak
+
+# Final stage: Setup environment with modern Go only
+FROM debian:bullseye
+
+# Basic system utilities
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    gpg \
+    make \
+    python3 \
+    sed \
+    tar \
+    zip \
+    unzip \
+    mingw-w64 \
+    binutils-mingw-w64 \
+    g++-mingw-w64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy modern Go from golang image
+COPY --from=golang:bullseye /usr/local/go /usr/local/go
+
+# Add Go to PATH
+ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
+ENV GOPATH="/go"
+
+# Set up protoc
+RUN mkdir -p /usr/local/bin && \
+    PROTOC_VERSION="29.2" && \
+    PROTOC_ZIP="protoc-${PROTOC_VERSION}-linux-x86_64.zip" && \
+    curl -OL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}" && \
+    unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc && \
+    rm -f ${PROTOC_ZIP}
+
+# Install Go tools
+RUN mkdir -p /go/bin && \
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# Copy the builder from builder stage and make it executable
+COPY --from=builder /builder/cloak /usr/local/bin/
+RUN chmod +x /usr/local/bin/cloak
+
+ENV TARGET_VERSION="1.6"
+
+# Create work directory
+RUN mkdir -p /tmp/output
+WORKDIR /tmp/output
+
+CMD ["bash"]

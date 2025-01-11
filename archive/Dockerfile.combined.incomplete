@@ -1,0 +1,71 @@
+# First stage: Build the builder program
+FROM golang:bullseye as builder
+COPY builder/ /builder
+WORKDIR /builder
+RUN go build -o /builder/builder
+
+# Final stage: Setup environment with multiple Go versions
+FROM golang:bullseye as final
+
+# Layer 1: Basic system utilities
+RUN apt-get update && apt-get install -y \
+   build-essential \
+   curl \
+   gpg \
+   make \
+   python3 \
+   sed \
+   tar \
+   zip \
+   unzip \
+   mingw-w64 \
+   binutils-mingw-w64 \
+   g++-mingw-w64 \
+   && rm -rf /var/lib/apt/lists/*
+
+# Download Go 1.18 directly to temp location
+RUN mkdir -p /usr/local/go1.18.temp && \
+    curl -L https://go.dev/dl/go1.18.10.linux-amd64.tar.gz | tar -C /usr/local/go1.18.temp --strip-components=1 -xzf - && \
+    mv /usr/local/go /usr/local/go.modern && \
+    ln -s /usr/local/go.modern /usr/local/go
+
+# Set up protoc directories and install both versions
+RUN mkdir -p /usr/local/protoc-modern/bin /usr/local/protoc-legacy/bin && \
+   PROTOC_VERSION="29.2" && \
+   PROTOC_ZIP="protoc-${PROTOC_VERSION}-linux-x86_64.zip" && \
+   curl -OL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}" && \
+   unzip -o ${PROTOC_ZIP} -d /usr/local/protoc-modern bin/protoc && \
+   cp /usr/local/protoc-modern/bin/protoc /usr/local/protoc-legacy/bin/ && \
+   rm -f ${PROTOC_ZIP}
+
+# Set up GOPATH bin directories
+RUN mkdir -p /go/bin.modern /go/bin.legacy /go/bin
+
+# Install Go tools for modern version
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+   go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
+   cp /go/bin/protoc-gen-go /go/bin.modern/ && \
+   cp /go/bin/protoc-gen-go-grpc /go/bin.modern/
+
+# Install Go tools for legacy version (1.18)
+RUN /usr/local/go1.18.temp/bin/go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+   /usr/local/go1.18.temp/bin/go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
+   cp /go/bin/protoc-gen-go /go/bin.legacy/ && \
+   cp /go/bin/protoc-gen-go-grpc /go/bin.legacy/
+
+# Verify installations
+RUN /usr/local/go/bin/go version && \
+   /usr/local/go1.18.temp/bin/go version && \
+   /usr/local/protoc-modern/bin/protoc --version && \
+   /usr/local/protoc-legacy/bin/protoc --version
+
+# Create work directory
+RUN mkdir -p /tmp/output
+
+# Copy the builder from builder stage and make it executable
+COPY --from=builder /builder/builder /usr/local/bin/
+RUN chmod +x /usr/local/bin/builder
+
+WORKDIR /tmp/output
+
+CMD ["bash"]
