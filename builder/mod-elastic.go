@@ -31,6 +31,7 @@ func NewElasticModule() *ElasticModule {
 			{search: "RegistryReadReq", replace: "Roberto"},
 			{search: "RequestResend", replace: "Frankie"},
 			{search: "GetPrivInfo", replace: "Wallace"},
+			{search: "-NoExit", replace: "-nOExIt"},
 		},
 	}
 }
