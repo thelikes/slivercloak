@@ -52,6 +52,10 @@ func main() {
 	donOtamsi := NewDoNotAmsiModule()
 	builder.RegisterModule(donOtamsi)
 
+	// Register the 'elastic' module
+	elasticModule := NewElasticModule()
+	builder.RegisterModule(elasticModule)
+
 	// Register new modules here
 	// ...
 
