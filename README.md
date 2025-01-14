@@ -37,8 +37,8 @@ $ docker run -v $(pwd)/output:/tmp/output -it cloak:1.6 cloak -modules all
 ```
 
 ## modules
-Example modules:
 
 * [example module](./builder/mod-example.go)
 * [branding module](./builder/mod-branding.go)
 * [donutamsi module](./builder/mod-donut.go)
+* [elastic module](./builder/mod-elastic.go)
