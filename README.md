@@ -33,6 +33,7 @@ $ docker run -v $(pwd)/output:/tmp/output -it cloak:1.6 cloak -modules all
 2025/01/11 21:00:34 Running module: donotamsi
 2025/01/11 21:00:34 Running module: example
 2025/01/11 21:00:34 Running module: branding
+2025/01/11 21:00:34 Running module: Elastic
 2025/01/11 21:00:35 Compiling...
 ```
 
